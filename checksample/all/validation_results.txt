@@ -1,0 +1,17 @@
+Net BaryNet  Patchsize 128 Epoch 1, psnr 21.2858, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 2, psnr 23.5807, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 3, psnr 24.0211, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 4, psnr 22.8129, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 5, psnr 22.0637, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 6, psnr 23.0017, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 7, psnr 22.9874, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 1, psnr 23.6577, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 2, psnr 21.9606, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 3, psnr 20.1509, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 4, psnr 21.6751, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 5, psnr 22.8927, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 6, psnr 19.2336, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 7, psnr 21.6481, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 8, psnr 23.0667, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 9, psnr 23.4811, Batchsize 4
+Net BaryNet  Patchsize 128 Epoch 10, psnr 20.8746, Batchsize 4

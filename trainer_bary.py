@@ -33,7 +33,7 @@ parser.add_argument("--threads", type=int, default=16, help="Number of threads f
 parser.add_argument("--pretrained", default="", type=str, help="Path to pretrained model (default: none)")
 parser.add_argument("--gpus", default="0", type=str, help="gpu ids (default: 0)")
 parser.add_argument("--pairnum", default=10000000, type=int, help="num of paired samples")
-parser.add_argument('--num_sources', type=int, default=3, help='number of source domains.')
+parser.add_argument('--num_sources', type=int, default=5, help='number of source domains.')
 
 parser.add_argument('--de_type', nargs='+', default=['denoise_15', 'denoise_25', 'denoise_50', 'derain', 'dehaze'],
                     help='which type of degradations is training and testing for.')
@@ -50,8 +50,8 @@ parser.add_argument('--lowlight_dir', type=str, default='data/Train/lowlight/',
 
 # parser.add_argument("--degset", default="./datasets/Deraining/train/Rain13K/input/", type=str, help="degraded data")
 # parser.add_argument("--tarset", default="./datasets/Deraining/train/Rain13K/target/", type=str, help="target data")
-parser.add_argument("--degset", default="./data/test/derain/Rain100L/input/", type=str, help="degraded data")
-parser.add_argument("--tarset", default="./data/test/derain/Rain100L/target/", type=str, help="target data")
+parser.add_argument("--degset", default="./data/val/Derain/input/", type=str, help="degraded data")
+parser.add_argument("--tarset", default="./data/val/Derain/target/", type=str, help="target data")
 parser.add_argument("--Sigma", default=10000, type=float)
 parser.add_argument("--sigma", default=1, type=float)
 parser.add_argument("--optimizer", default="RMSprop", type=str, help="optimizer type")
@@ -389,14 +389,24 @@ def train(training_data_loader, BaryIR_optimizer, Pots_optimizer, BaryIR, Pots, 
                                                                                                  BaryIR_train_loss.data,
                                                                                                  mse_loss,
                                                                                                  ))
-            save_image(out_restored.data, './checksample/' + opt.type + '/output.png')
-            bary_vis = torch.mean(bary_latent, dim=1).view(3,1,16,-1)
-            res_vis = torch.mean(res_bary, dim=1).view(3,1,16,-1)
-            save_image(200*abs(res_vis).data, './checksample/' + opt.type + '/res.png')
-            save_image(20*abs(bary_vis).data, './checksample/' + opt.type + '/bary.png')
-            save_image(degraded.data, './checksample/' + opt.type + '/degraded.png')
-            save_image(target.data, './checksample/' + opt.type + '/target.png')
+            #save_image(out_restored.data, './checksample/' + opt.type + '/output.png')
+            #bary_vis = torch.mean(bary_latent, dim=1).view(3,1,16,-1)
+            #res_vis = torch.mean(res_bary, dim=1).view(3,1,16,-1)
+            #save_image(200*abs(res_vis).data, './checksample/' + opt.type + '/res.png')
+            #save_image(20*abs(bary_vis).data, './checksample/' + opt.type + '/bary.png')
+            #save_image(degraded.data, './checksample/' + opt.type + '/degraded.png')
+            #save_image(target.data, './checksample/' + opt.type + '/target.png')
+            try:
+                save_image(out_restored.data, './checksample/' + opt.type + '/output.png')
 
+                bary_vis = torch.mean(bary_latent, dim=1).view(3, 1, 16, -1)
+                res_vis = torch.mean(res_bary, dim=1).view(3, 1, 16, -1)
+                save_image(200 * abs(res_vis).data, './checksample/' + opt.type + '/res.png')
+                save_image(20 * abs(bary_vis).data, './checksample/' + opt.type + '/bary.png')
+                save_image(degraded.data, './checksample/' + opt.type + '/degraded.png')
+                save_image(target.data, './checksample/' + opt.type + '/target.png')
+            except Exception as e:
+                print(f"[Warning] Visualization skipped due to: {e}")
     return torch.mean(torch.FloatTensor(BaryIRloss)), torch.mean(torch.FloatTensor(Pots_loss))
 
 
