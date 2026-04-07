@@ -36,13 +36,10 @@ class TrainDataset(Dataset):
 
         self.noise_combine = noise_combine
         if not noise_combine:
-            self.de_dict = {'denoise_15': 0, 'denoise_25': 1, 'denoise_50': 2, 'derain': 3, 'dehaze': 4, 'deblur': 5,
-                            'lowlight': 6, 'single': 7}
+            self.de_dict = {'denoise': 0, 'derain': 1, 'dehaze': 2, 'deblur': 3, 'lowlight': 4, 'single': 5}
             myprint(f"degradation type labels: {self.de_dict}")
         else:
-            # noise is one degradaton category
-            self.de_dict_combine = {'denoise_15': 0, 'denoise_25': 0, 'denoise_50': 0, 'derain': 1, 'dehaze': 2,
-                                    'deblur': 3, 'lowlight': 4}
+            self.de_dict_combine = {'denoise': 0, 'derain': 1, 'dehaze': 2, 'deblur': 3, 'lowlight': 4}
             myprint(self.de_dict_combine)
 
         self._init_ids()
@@ -57,11 +54,11 @@ class TrainDataset(Dataset):
         self.toTensor = ToTensor()
 
     def _init_ids(self):
-        if 'denoise_15' in self.de_type or 'denoise_25' in self.de_type or 'denoise_50' in self.de_type:
+        if 'denoise' in self.de_type:
             myprint('... init denoising train dataset')
             self._init_noise_clean_ids()
         if 'derain' in self.de_type:
-            myprint('... init denoising train dataset')
+            myprint('... init deraining train dataset')
             self._init_rs_ids()
         if 'dehaze' in self.de_type:
             myprint('... init dehazing train dataset')
@@ -78,61 +75,78 @@ class TrainDataset(Dataset):
         random.shuffle(self.de_type)
 
     def _init_noise_clean_ids(self):
-        ref_file = os.path.join(self.args.data_file_dir, "noisy/denoise.txt")
-        temp_ids = []
-        temp_ids += [id_.strip() for id_ in open(ref_file)]
-        clean_ids = []
-        name_list = os.listdir(self.args.denoise_dir)
-        clean_ids += [self.args.denoise_dir + id_ for id_ in name_list if id_.strip() in temp_ids]
-        self.s15_ids = self.s25_ids = self.s50_ids = []
-        if 'denoise_15' in self.de_type:
-            self.s15_ids = [{"clean_id": x, "de_type": 0} for x in clean_ids]
-            self.s15_ids = self.s15_ids * 5
-            random.shuffle(self.s15_ids)
-            self.s15_counter = 0
-        if 'denoise_25'  in self.de_type and 'denoise_15' in self.de_type and 'denoise_50' in self.de_type:
-            self.s25_ids = [{"clean_id": x, "de_type": 1} for x in clean_ids]
-            self.s25_ids = self.s25_ids * 5
-            random.shuffle(self.s25_ids)
-            self.s25_counter = 0
-        elif  'denoise_25' in self.de_type:
-            self.s25_ids = [{"clean_id": x, "de_type": 1} for x in clean_ids]
-            self.s25_ids = self.s25_ids * 15
-            random.shuffle(self.s25_ids)
-            self.s25_counter = 0            
-        if 'denoise_50' in self.de_type:
-            self.s50_ids = [{"clean_id": x, "de_type": 2} for x in clean_ids]
-            self.s50_ids = self.s50_ids * 5
-            random.shuffle(self.s50_ids)
-            self.s50_counter = 0
-
-
-        self.num_s50 = len(self.s50_ids)
-        self.num_s25 = len(self.s25_ids)
-        self.num_s15 = len(self.s15_ids)
-
-        self.num_clean =  self.num_s50 + self.num_s25 + self.num_s15
-        myprint("Total Denoise Ids : {}".format(self.num_clean))
+        # Load denoise data from GT and noise directories
+        if self.args.denoise_dir.endswith('GT/') or self.args.denoise_dir.endswith('GT'):
+            clean_dir = self.args.denoise_dir
+            noisy_dir = self.args.denoise_dir.replace('GT', 'noise')
+        else:
+            clean_dir = os.path.join(self.args.denoise_dir, 'GT')
+            noisy_dir = os.path.join(self.args.denoise_dir, 'noise')
+        
+        if not os.path.exists(clean_dir) or not os.path.exists(noisy_dir):
+            myprint(f"Warning: Denoise directory not found - {clean_dir} or {noisy_dir}")
+            self.denoise_ids = []
+            self.num_denoise = 0
+            return
+        
+        clean_files = sorted([f for f in os.listdir(clean_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+        
+        self.denoise_ids = []
+        for filename in clean_files:
+            clean_path = os.path.join(clean_dir, filename)
+            noisy_path = os.path.join(noisy_dir, filename)
+            if os.path.exists(noisy_path):
+                self.denoise_ids.append({
+                    "clean_id": clean_path,
+                    "noisy_id": noisy_path,
+                    "de_type": 0
+                })
+        
+        self.num_denoise = len(self.denoise_ids)
+        myprint("Total Denoise Ids : {}".format(self.num_denoise))
 
     def _init_hazy_ids(self):
-        temp_ids = []
-        hazy = os.path.join(self.args.data_file_dir, "hazy/hazy_outside.txt")
-        temp_ids += [self.args.dehaze_dir + id_.strip() for id_ in open(hazy)]
-        self.hazy_ids = [{"clean_id": x, "de_type": 4} for x in temp_ids]
-
+        """
+        修改后的dehaze数据加载：
+        直接从data/Train/Dehaze/synthetic读取退化图片
+        不再依赖data_dir/hazy/hazy_outside.txt
+        """
+        synthetic_dir = os.path.join(self.args.dehaze_dir, 'synthetic')
+        
+        if not os.path.exists(synthetic_dir):
+            myprint(f"警告：Dehaze synthetic目录不存在: {synthetic_dir}")
+            self.hazy_ids = []
+            self.num_hazy = 0
+            return
+        
+        # 直接读取synthetic目录下的所有图片
+        hazy_files = sorted([f for f in os.listdir(synthetic_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+        temp_ids = [os.path.join(synthetic_dir, f) for f in hazy_files]
+        
+        self.hazy_ids = [{"clean_id": x, "de_type": 2} for x in temp_ids]
         self.hazy_counter = 0
 
         self.num_hazy = len(self.hazy_ids)
         myprint("Total Hazy Ids : {}".format(self.num_hazy))
-
     def _init_rs_ids(self):
-        # rain index
-        temp_ids = []
-        rs = os.path.join(self.args.data_file_dir, "rainy/rainTrain.txt")
-        temp_ids += [self.args.derain_dir + id_.strip() for id_ in open(rs)]
-        self.rs_ids = [{"clean_id": x, "de_type": 3} for x in temp_ids]
-        self.rs_ids = self.rs_ids * 360
-
+        """
+        修改后的derain数据加载：
+        直接从data/Train/Derain/rainy读取退化图片
+        不再依赖data_dir/rainy/rainTrain.txt
+        """
+        rainy_dir = os.path.join(self.args.derain_dir, 'rainy')
+        
+        if not os.path.exists(rainy_dir):
+            myprint(f"警告：Derain rainy目录不存在: {rainy_dir}")
+            self.rs_ids = []
+            self.num_rl = 0
+            return
+        
+        # 直接读取rainy目录下的所有图片
+        rainy_files = sorted([f for f in os.listdir(rainy_dir) if f.endswith(('.jpg', '.png', '.jpeg'))])
+        temp_ids = [os.path.join(rainy_dir, f) for f in rainy_files]
+        
+        self.rs_ids = [{"clean_id": x, "de_type": 1} for x in temp_ids]
         self.rl_counter = 0
         self.num_rl = len(self.rs_ids)
 
@@ -142,8 +156,7 @@ class TrainDataset(Dataset):
         temp_ids = []
         image_list = os.listdir(os.path.join(self.args.deblur_dir, 'sharp/'))
         temp_ids = image_list
-        self.blur_ids = [{"clean_id": x, "de_type": 5} for x in temp_ids]
-        self.blur_ids = self.blur_ids * 35  #
+        self.blur_ids = [{"clean_id": x, "de_type": 3} for x in temp_ids]
         self.blur_counter = 0
         self.num_blur = len(self.blur_ids)
         myprint("Total Blur Ids : {}".format(self.num_blur))
@@ -159,8 +172,7 @@ class TrainDataset(Dataset):
         temp_ids = []
         image_list = os.listdir(os.path.join(self.args.lowlight_dir, 'low/'))
         temp_ids = image_list
-        self.lowlight_ids = [{"clean_id": x, "de_type": 6} for x in temp_ids]
-        self.lowlight_ids = self.lowlight_ids * 150
+        self.lowlight_ids = [{"clean_id": x, "de_type": 4} for x in temp_ids]
         self.num_lowlight = len(self.lowlight_ids)
         myprint("Total low light Ids : {}".format(self.num_lowlight))
 
@@ -168,8 +180,7 @@ class TrainDataset(Dataset):
         temp_ids = []
         image_list = os.listdir(os.path.join(self.args.single_dir, 'degraded/'))
         temp_ids = image_list
-        self.single_ids = [{"clean_id": x, "de_type": 7} for x in temp_ids]
-        self.single_ids = self.single_ids * 5
+        self.single_ids = [{"clean_id": x, "de_type": 5} for x in temp_ids]
         self.num_single = len(self.single_ids)
         myprint("Total single Ids : {}".format(self.num_single))
 
@@ -197,12 +208,8 @@ class TrainDataset(Dataset):
 
     def _merge_ids(self):
         self.sample_ids = []
-        if "denoise_15" in self.de_type:  # TODO, bad code
-            self.sample_ids += self.s15_ids
-        if "denoise_25" in self.de_type:
-            self.sample_ids += self.s25_ids
-        if "denoise_50" in self.de_type:
-            self.sample_ids += self.s50_ids
+        if "denoise" in self.de_type:
+            self.sample_ids += self.denoise_ids
         if "derain" in self.de_type:
             self.sample_ids += self.rs_ids
         if "dehaze" in self.de_type:
@@ -224,37 +231,38 @@ class TrainDataset(Dataset):
     def __getitem__(self, idx):
         sample = self.sample_ids[idx]
         de_id = sample["de_type"]
-        if de_id < 3:
-            if de_id == 0:
-                clean_id = sample["clean_id"]
-            elif de_id == 1:
-                clean_id = sample["clean_id"]
-            elif de_id == 2:
-                clean_id = sample["clean_id"]
-
-            clean_img = crop_img(np.array(Image.open(clean_id).convert('RGB')),
-                                 base=16)  # crop to 2n size to support different networks
-            clean_patch = self.crop_transform(clean_img)
-            clean_patch = np.array(clean_patch)
-
+        
+        if de_id == 0:  # denoise
+            clean_id = sample["clean_id"]
+            noisy_id = sample["noisy_id"]
+            
+            clean_img = crop_img(np.array(Image.open(clean_id).convert('RGB')), base=16)
+            noisy_img = crop_img(np.array(Image.open(noisy_id).convert('RGB')), base=16)
             clean_name = clean_id.split("/")[-1].split('.')[0]
-
-            clean_patch = random_augmentation(clean_patch)[0]
-
-            degrad_patch = self.D.single_degrade(clean_patch, de_id)
+            
+            # Random crop to same location
+            H = clean_img.shape[0]
+            W = clean_img.shape[1]
+            ind_H = random.randint(0, H - self.args.patch_size)
+            ind_W = random.randint(0, W - self.args.patch_size)
+            
+            clean_patch = clean_img[ind_H:ind_H + self.args.patch_size, ind_W:ind_W + self.args.patch_size]
+            degrad_patch = noisy_img[ind_H:ind_H + self.args.patch_size, ind_W:ind_W + self.args.patch_size]
+            
+            clean_patch, degrad_patch = random_augmentation(clean_patch, degrad_patch)
         else:
-            if de_id == 3:
+            if de_id == 1:
                 # Rain Streak Removal
                 degrad_img = crop_img(np.array(Image.open(sample["clean_id"]).convert('RGB')), base=16)
                 clean_name = self._get_raingt_name(sample["clean_id"])
                 clean_img = crop_img(np.array(Image.open(clean_name).convert('RGB')), base=16)
-            elif de_id == 4:
+            elif de_id == 2:
                 # Dehazing with SOTS outdoor training set
                 degrad_img = crop_img(np.array(Image.open(sample["clean_id"]).convert('RGB')), base=16)
                 clean_name = self._get_nonhazy_name(sample["clean_id"])
                 clean_img = crop_img(np.array(Image.open(clean_name).convert('RGB')), base=16)
-            elif de_id == 5:
-                #  debluring dataset
+            elif de_id == 3:
+                # Debluring dataset
                 degrad_img = crop_img(np.array(
                     Image.open(os.path.join(self.args.deblur_dir, 'blur/', sample["clean_id"])).convert('RGB')),
                     base=16)
@@ -262,8 +270,8 @@ class TrainDataset(Dataset):
                     Image.open(os.path.join(self.args.deblur_dir, 'sharp/', sample["clean_id"])).convert('RGB')),
                     base=16)
                 clean_name = sample["clean_id"]
-            elif de_id == 6:
-                # low light enhancement dataset
+            elif de_id == 4:
+                # Low light enhancement dataset
                 degrad_img = crop_img(np.array(
                     Image.open(os.path.join(self.args.lowlight_dir, 'low/', sample["clean_id"])).convert('RGB')),
                     base=16)
@@ -271,8 +279,8 @@ class TrainDataset(Dataset):
                     Image.open(os.path.join(self.args.lowlight_dir, 'high/', sample["clean_id"])).convert('RGB')),
                     base=16)
                 clean_name = sample["clean_id"]
-            elif de_id == 7:
-                # other single degradation dataset
+            elif de_id == 5:
+                # Other single degradation dataset
                 degrad_img = crop_img(np.array(
                     Image.open(os.path.join(self.args.single_dir, 'degraded/', sample["clean_id"])).convert('RGB')),
                     base=16)
@@ -280,6 +288,8 @@ class TrainDataset(Dataset):
                     Image.open(os.path.join(self.args.single_dir, 'target/', sample["clean_id"])).convert('RGB')),
                     base=16)
                 clean_name = sample["clean_id"]
+            else:
+                raise ValueError(f"Unknown degradation type: {de_id}")
 
             degrad_patch, clean_patch = random_augmentation(*self._crop_patch(degrad_img, clean_img))
 
@@ -287,16 +297,11 @@ class TrainDataset(Dataset):
         degrad_patch = self.toTensor(degrad_patch)
 
         if not self.noise_combine:
-            # noise has multiple prompt
-            # self.de_dict = {'denoise_15': 0, 'denoise_25': 1, 'denoise_50': 2, 'derain': 3, 'dehaze': 4, 'deblur': 5, 'lowlight': 6}
+            # de_id: 0=denoise, 1=derain, 2=dehaze, 3=deblur, 4=lowlight, 5=single
             de_id = de_id
         else:
             # noise is one degradaton category
-            self.de_dict_combine = {'denoise_15': 0, 'denoise_25': 0, 'denoise_50': 0, 'derain': 1, 'dehaze': 2,
-                                    'deblur': 3, 'lowlight': 4}
-            de_id -= 2
-            if de_id < 0:
-                de_id = 0
+            de_id = de_id
 
         return [clean_name, de_id], degrad_patch, clean_patch
 
@@ -305,8 +310,8 @@ class TrainDataset(Dataset):
 
     def get_num_samples(self):
         domain_sample_counts = []
-        if 'denoise_25' in self.de_type or 'denoise_15' in self.de_type or 'denoise_50' in self.de_type:
-            domain_sample_counts.append(self.num_clean)
+        if 'denoise' in self.de_type:
+            domain_sample_counts.append(self.num_denoise)
         if 'derain' in self.de_type:
             domain_sample_counts.append(self.num_rl)
         if 'dehaze' in self.de_type:
