@@ -1,0 +1,8 @@
+BaryCE Testing Results
+============================================================
+Model: ./checkpoint/model_BaryCE_all_128_100.pth
+Test set: ./data/test/Dehaze/SOTS/input/
+Number of images: 22
+============================================================
+PSNR: Average 29.6981 dB,   Best 38.1961 dB,   Worst 18.0108 dB
+SSIM: Average 0.9577,      Best 0.9882,      Worst 0.8322

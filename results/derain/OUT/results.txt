@@ -1,0 +1,8 @@
+BaryCE Testing Results
+============================================================
+Model: ./checkpoint/model_BaryCE_all_128_100.pth
+Test set: ./data/test/Derain/Rain100L/input/
+Number of images: 100
+============================================================
+PSNR: Average 34.5972 dB,   Best 44.3686 dB,   Worst 20.2643 dB
+SSIM: Average 0.9547,      Best 0.9922,      Worst 0.8666

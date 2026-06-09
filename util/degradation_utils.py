@@ -49,9 +49,13 @@ class Degradation(object):
         degrad_patch_2, _ = self._degrade_by_type(clean_patch_2, degrade_type)
         return degrad_patch_1, degrad_patch_2
 
-    def single_degrade(self,clean_patch,degrade_type = None):
+    def single_degrade(self, clean_patch, degrade_type=None, noise_sigma=None):
+        if noise_sigma is not None:
+            degrad_patch_1, _ = self._add_gaussian_noise(clean_patch, sigma=noise_sigma)
+            return degrad_patch_1
+
         if degrade_type == None:
-            degrade_type = random.randint(0, 3)
+            degrade_type = random.randint(0, 2)
         else:
             degrade_type = degrade_type
 

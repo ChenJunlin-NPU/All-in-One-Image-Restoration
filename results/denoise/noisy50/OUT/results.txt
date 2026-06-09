@@ -1,0 +1,8 @@
+BaryCE Testing Results
+============================================================
+Model: ./checkpoint/model_BaryCE_all_128_100.pth
+Test set: ./data/test/Denoise/BSD68/noisy50/input/
+Number of images: 68
+============================================================
+PSNR: Average 27.1077 dB,   Best 35.4411 dB,   Worst 22.6370 dB
+SSIM: Average 0.7594,      Best 0.9244,      Worst 0.4541

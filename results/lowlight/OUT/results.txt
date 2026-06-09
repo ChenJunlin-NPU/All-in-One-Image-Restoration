@@ -1,0 +1,8 @@
+BaryCE Testing Results
+============================================================
+Model: ./checkpoint/model_BaryCE_all_128_100.pth
+Test set: ./data/test/lowlight/LOLv1/input/
+Number of images: 25
+============================================================
+PSNR: Average 25.3598 dB,   Best 37.0770 dB,   Worst 9.1370 dB
+SSIM: Average 0.8574,      Best 0.9623,      Worst 0.3448

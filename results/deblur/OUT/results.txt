@@ -1,0 +1,8 @@
+BaryCE Testing Results
+============================================================
+Model: ./checkpoint/model_BaryCE_all_128_100.pth
+Test set: ./data/test/Deblur/GoPro/input/
+Number of images: 500
+============================================================
+PSNR: Average 26.7589 dB,   Best 38.1803 dB,   Worst 19.6950 dB
+SSIM: Average 0.8234,      Best 0.9822,      Worst 0.5547
